@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ジャンプだけで登るゲーム</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #eef; }
+    canvas { display: block; background: #ccf; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const player = {
+  x: 100, y: 500, width: 30, height: 30,
+  vx: 0, vy: 0,
+  color: "red",
+  onGround: false,
+  onPlatform: null
+};
+
+const gravity = 0.5;
+const friction = 0.8;
+const bounce = -0.6;
+
+const platforms = [
+  { x: 0, y: 570, width: 800, height: 30, color: "#444", movable: false },
+  { x: 200, y: 450, width: 120, height: 20, color: "#888", movable: true, vx: 1 },
+  { x: 400, y: 350, width: 120, height: 20, color: "#888", movable: true, vx: -1 },
+  { x: 250, y: 250, width: 120, height: 20, color: "#888", movable: true, vx: 1 }
+];
+
+let keys = {};
+let jumpPressed = false;
+
+document.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === " " && player.onGround && !jumpPressed) {
+    player.vy = -12;
+    jumpPressed = true;
+  }
+});
+document.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  if (e.key === " ") jumpPressed = false;
+});
+
+function update() {
+  player.vy += gravity;
+  player.x += player.vx;
+  player.y += player.vy;
+  player.onGround = false;
+  player.onPlatform = null;
+
+  // 足場との当たり判定
+  for (let plat of platforms) {
+    if (
+      player.x < plat.x + plat.width &&
+      player.x + player.width > plat.x &&
+      player.y + player.height < plat.y + 10 &&
+      player.y + player.height + player.vy >= plat.y
+    ) {
+      player.y = plat.y - player.height;
+      player.vy = 0;
+      player.onGround = true;
+      player.onPlatform = plat;
+    }
+  }
+
+  if (player.onPlatform && player.onPlatform.movable) {
+    player.x += player.onPlatform.vx;
+  }
+
+  // 壁との衝突
+  if (player.x < 0) { player.x = 0; player.vx = 0; }
+  if (player.x + player.width > canvas.width) {
+    player.x = canvas.width - player.width;
+    player.vx = 0;
+  }
+  if (player.y + player.height > canvas.height) {
+    player.y = canvas.height - player.height;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // 摩擦
+  if (player.onGround) player.vx *= friction;
+
+  // 可動足場の移動
+  for (let plat of platforms) {
+    if (plat.movable) {
+      plat.x += plat.vx;
+      if (plat.x < 0 || plat.x + plat.width > canvas.width) {
+        plat.vx *= -1;
+      }
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+  for (let plat of platforms) {
+    ctx.fillStyle = plat.color;
+    ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
